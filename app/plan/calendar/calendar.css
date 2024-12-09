@@ -1,0 +1,7 @@
+.plan-work-calendar .fc a {
+  color: #20232a;
+}
+
+.plan-work-calendar .fc a:hover {
+  color: var(--primary-color);
+}

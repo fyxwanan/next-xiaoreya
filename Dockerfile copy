@@ -1,0 +1,39 @@
+FROM node:20 as base
+
+FROM base as deps
+RUN apt-get update && apt-get install -y python3
+# RUN apk add --no-cache libc6-compat
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm config set proxy false
+RUN npm cache clean --force
+RUN npm config set registry http://repo.sending.me/
+RUN npm install
+
+# Miss the `env` file
+FROM base as builder
+WORKDIR /app
+
+ARG ENV
+
+RUN echo "ENV is set to $ENV"
+
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+COPY .env.${ENV} .env
+RUN npm run build
+
+
+FROM base as runner
+WORKDIR /app
+ENV NODE_ENV production
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+EXPOSE 3000
+ENV PORT 3000
+CMD ["node", "server.js"]
